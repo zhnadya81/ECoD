@@ -530,6 +530,15 @@ function ADD_COMPONENT_COLLECTION($idAuthor, $idMod, $type, $asset, $javascript)
 	return $id;
 }
 
+function SET_COMPONENT($idAuthor, $idComp, $asset, $javascript) {
+	// $idMod - идентификатор модуля
+	$mysqli = conn();	
+
+	$query = "UPDATE component SET asset='$asset', javascript='$javascript' WHERE idComp='$idComp'";
+
+	return $mysqli->query($query);
+}
+
 function ADD_CONCEPT_COLLECTION($idAuthor, $idMod, $asset, $javascript) {
 	// $idMod - идентификатор модуля
 
@@ -614,8 +623,7 @@ function CREATE_STANDART($idAuthor){
 
 	$mysqli = conn();	
 	$txt = 'Введите данные';
-	$query = "INSERT INTO standart (description, minstud, minpract, mincrt, maxcrt, total, url) VALUES ($txt, 0, 0, 0, 0, 0, $txt)";
-
+	$query = "INSERT INTO `standart`(`description`, `minstud`, `minpract`, `mincrt`, `maxcrt`, `total`, `url`, `level`, `length`, `Author`) VALUES ('$txt', '0', '0', '0', '0', '0', '$txt', '$txt', '0', '$idAuthor')";
 	$res = $mysqli->query($query);	// добавляем запись о новом стандарте
 	$id = $mysqli->insert_id;	// идентификатор нового стандарта
 
@@ -725,14 +733,14 @@ function STANDART_COLLECTION($idAuthor){
 	for ($row_no = 0; $row_no < $res->num_rows; $row_no++) {
 		$res->data_seek($row_no);
 		$row = $res->fetch_assoc();
-		$arr[$row_no] = array(id => $row[idStand], description => $row[description], minstud => $row[minstud], minpract => $row[minpract], mincrt => $row[mincrt], maxcrt => $row[maxcrt], total => $row[total], url => $row[url], level => $row[level], length => $row[length] );
+		$arr[$row_no] = array(idStand => $row[idStand], description => $row[description], minstud => $row[minstud], minpract => $row[minpract], mincrt => $row[mincrt], maxcrt => $row[maxcrt], total => $row[total], url => $row[url], level => $row[level], length => $row[length] );
 	}
 	return $arr;
 }
 
 // ---- операции над компетенциями ---- //
 
-function COMPETENCE_COLLECTION($type){
+/* function COMPETENCE_COLLECTION($type){
 	$mysqli = conn();	
 
 	$query = "SELECT * FROM `competence` WHERE `type` = '$type'";
@@ -744,6 +752,37 @@ function COMPETENCE_COLLECTION($type){
 		$arr[$row_no] = array(id => $row[idCompetence], source => $row[source], description => $row[description], number => $row[number]);
 	}
 	return $arr;
+} */
+
+function COMPETENCE_COLLECTION($idAuthor, $id, $type){
+	$mysqli = conn();	
+	
+	if ($type=="PC"){$atr = "idProg";}
+	else {$atr = "idStand";}
+
+	$query = "SELECT * FROM `$type` INNER JOIN `competence` WHERE `$atr` = '$id' AND `$type`.`idCompetence` = `competence`.`idCompetence`";
+	$res = $mysqli->query($query);	
+	$arr = array();
+	$atr1 = "id".$type;
+	for ($row_no = 0; $row_no < $res->num_rows; $row_no++) {
+		$res->data_seek($row_no);
+		$row = $res->fetch_assoc();
+		$id = $row[$atr1];
+		$arr[$row_no] = array(id => $id, idCompetence => $row[idCompetence], number => $row[number], description => $row[description]);
+	}
+	return $arr;
+}
+
+function UC_COLLECTION($idAuthor, $idStand){
+	return COMPETENCE_COLLECTION($idAuthor, $idStand, "UC");
+}
+
+function GPC_COLLECTION($idAuthor, $idStand){
+	return COMPETENCE_COLLECTION($idAuthor, $idStand, "GPC");
+}
+
+function PC_COLLECTION($idAuthor, $idProg){
+	return COMPETENCE_COLLECTION($idAuthor, $idProg, "PC");
 }
 
 function RESET_UC($idAuthor, $idStand){
@@ -846,7 +885,7 @@ function INSERT_GPC_INTO_STANDART($idAuthor, $idStand, $number, $idComp){
 	return $idGPC;
 }
 
-function INSERT_PC_INTO_EDU_PROG($idAuthor, $idProg, $number, $idComp){
+function INSERT_PC_INTO_PROG($idAuthor, $idProg, $number, $idComp){
 	$mysqli = conn();	
 	
 /* 	$query = "SELECT * FROM competence WHERE type=`ОПК` AND description=$description";
@@ -868,14 +907,40 @@ function INSERT_PC_INTO_EDU_PROG($idAuthor, $idProg, $number, $idComp){
 function DELETE_UC_FROM_STANDART($idAuthor, $idStand){
 	$mysqli = conn();	
 	
-	$idUC = DeleteCursor($idAuthor, "UC", $idStand);
+	$id = DeleteCursor($idAuthor, "UC", $idStand);
 	
-	if($idUC != 0){
-		$query = "DELETE FROM `UC` WHERE idUC=$idUC";
+	if($id != 0){
+		$query = "DELETE FROM `UC` WHERE idUC=$id";
 		$res = $mysqli->query($query);
 	}
 
-	return $idUC;
+	return $id;
+}
+
+function DELETE_GPC_FROM_STANDART($idAuthor, $idStand){
+	$mysqli = conn();	
+	
+	$id = DeleteCursor($idAuthor, "GPC", $idStand);
+	
+	if($id != 0){
+		$query = "DELETE FROM `GPC` WHERE idGPC=$id";
+		$res = $mysqli->query($query);
+	}
+
+	return $id;
+}
+
+function DELETE_PC_FROM_PROGRAM($idAuthor, $idProg){
+	$mysqli = conn();	
+	
+	$id = DeleteCursor($idAuthor, "PC", $idProg);
+	
+	if($id != 0){
+		$query = "DELETE FROM `PC` WHERE idPC=$id";
+		$res = $mysqli->query($query);
+	}
+
+	return $id;
 }
 
 
@@ -898,44 +963,13 @@ function GET_UC_DESCRIPTION($idAuthor, $idStand){
 	
 	$idUC = FetchCursor($idAuthor, "UC", $idStand);
 	
-	$query = "SELECT description FROM competence WHERE idCompetence IN (SELECT idCompetence FROM UC WHERE idUC=$idUC)";
-	$res = $mysqli->query($query);	
-	$res->data_seek(0);
-	$row = $res->fetch_assoc();
-
-	return $row[description];
-}
-
-/* function INSERT_GPC_INTO_STANDART($idAuthor, $idStand, $number, $description){
-	$mysqli = conn();	
-	
-	$query = "SELECT * FROM competence WHERE type=`ОПК` AND description=$description";
-	$res = $mysqli->query($query);	
-	$res->data_seek(0);
-	$row = $res->fetch_assoc();
-	$idComp = $row[idComp];
-	
-	$query = "INSERT INTO `GPC` (idStand, idCompetence, number) VALUES ($idStand, $idComp, $number)";
-
-	$res = $mysqli->query($query);	// добавляем запись о новой универсальной компетенции
-	$idGPC = $mysqli->insert_id;	// идентификатор нового модуля
-
-	InsertCursor($idAuthor, "GPC", $idStand, $idGPC);
-
-	return $idGPC;
-} */
-
-function DELETE_GPC($idAuthor, $idStand){
-	$mysqli = conn();	
-	
-	$idGPC = DeleteCursor($idAuthor, "GPC", $idStand);
-	
-	if($idUC != 0){
-		$query = "DELETE FROM `GPC` WHERE idGPC=$idGPC";
-		$res = $mysqli->query($query);
-	}
-
-	return 0;
+	if ($idUC != 0){
+		$query = "SELECT `description` FROM `competence` WHERE `idCompetence` IN (SELECT `idCompetence` FROM `uc` WHERE `idUC`=$idUC)";
+		$res = $mysqli->query($query);	
+		$res->data_seek(0);
+		$row = $res->fetch_assoc();
+		return $row[description];
+	}else return 0;	
 }
 
 function GET_GPC_NUMBER($idAuthor, $idStand){
@@ -943,12 +977,13 @@ function GET_GPC_NUMBER($idAuthor, $idStand){
 	
 	$idGPC = FetchCursor($idAuthor, "GPC", $idStand);
 	
-	$query = "SELECT `number` FROM GPC WHERE idGPC = $idGPC";
-	$res = $mysqli->query($query);	
-	$res->data_seek(0);
-	$row = $res->fetch_assoc();
-
-	return $row[number];
+	if ($idGPC != 0){
+		$query = "SELECT `number` FROM `GPC` WHERE `idGPC` = $idGPC";
+		$res = $mysqli->query($query);	
+		$res->data_seek(0);
+		$row = $res->fetch_assoc();
+		return $row[number];
+	}else return 0;	
 }
 
 function GET_GPC_DESCRIPTION($idAuthor, $idStand){
@@ -956,22 +991,115 @@ function GET_GPC_DESCRIPTION($idAuthor, $idStand){
 	
 	$idGPC = FetchCursor($idAuthor, "GPC", $idStand);
 	
-	$query = "SELECT description FROM competence WHERE idCompetence IN (SELECT idCompetence FROM GPC WHERE idGPC=$idGPC)";
-	$res = $mysqli->query($query);	
-	$res->data_seek(0);
-	$row = $res->fetch_assoc();
-
-	return $row[description];
+	if ($idGPC != 0){
+		$query = "SELECT `description` FROM `GPC` WHERE `idGPC`=$idGPC)";
+		$res = $mysqli->query($query);	
+		$res->data_seek(0);
+		$row = $res->fetch_assoc();
+		return $row[description];
+	}else return 0;	
 }
 
+function GET_PC_NUMBER($idAuthor, $idProg){
+	$mysqli = conn();	
+	
+	$idPC = FetchCursor($idAuthor, "PC", $idProg);
+	
+	if ($idPC != 0){
+		$query = "SELECT `number` FROM `PC` WHERE `idPC` = $idPC";
+		$res = $mysqli->query($query);	
+		$res->data_seek(0);
+		$row = $res->fetch_assoc();
+		return $row[number];
+	}else return 0;	
+}
 
+function GET_PC_DESCRIPTION($idAuthor, $idProg){
+	$mysqli = conn();	
+	
+	$idPC = FetchCursor($idAuthor, "PC", $idProg);
+	
+	if ($idPC != 0){
+		$query = "SELECT `description` FROM `PC` WHERE `idPC`=$idPC)";
+		$res = $mysqli->query($query);	
+		$res->data_seek(0);
+		$row = $res->fetch_assoc();
+		return $row[description];
+	}else return 0;	
+}
+
+function SET_UC_NUMBER($idAuthor, $idStand, $value){
+	$mysqli = conn();	
+	
+	$idUC = FetchCursor($idAuthor, "UC", $idStand);
+	
+	if ($idUC != 0){
+		$query = "UPDATE `UC` SET `number` = '$value' WHERE `idUC` = $idUC";
+		return $mysqli->query($query);
+	}else return 0;
+}
+
+function SET_UC_DESCRIPTION($idAuthor, $idStand, $value){
+	$mysqli = conn();	
+	
+	$idUC = FetchCursor($idAuthor, "UC", $idStand);
+	
+	if ($idUC != 0){
+		$query = "UPDATE `UC` SET `description` = '$value' WHERE `idUC` = $idUC";
+		return $mysqli->query($query);
+	}else return 0;
+}
+
+function SET_GPC_NUMBER($idAuthor, $idStand, $value){
+	$mysqli = conn();	
+	
+	$idGPC = FetchCursor($idAuthor, "GPC", $idStand);
+	
+	if ($idGPC != 0){
+		$query = "UPDATE `GPC` SET `number` = '$value' WHERE `idGPC` = $idGPC";
+		return $mysqli->query($query);
+	}else return 0;
+}
+
+function SET_GPC_DESCRIPTION($idAuthor, $idStand, $value){
+	$mysqli = conn();	
+	
+	$idGPC = FetchCursor($idAuthor, "GPC", $idStand);
+	
+	if ($idGPC != 0){
+		$query = "UPDATE `GPC` SET `description` = '$value' WHERE `idGPC` = $idGPC";
+		return $mysqli->query($query);
+	}else return 0;
+}
+
+function SET_PC_NUMBER($idAuthor, $idProg, $value){
+	$mysqli = conn();	
+	
+	$idPC = FetchCursor($idAuthor, "PC", $idProg);
+	
+	if ($idPC != 0){
+		$query = "UPDATE `PC` SET `number` = '$value' WHERE `idPC` = $idPC";
+		return $mysqli->query($query);
+	}else return 0;
+}
+
+function SET_PC_DESCRIPTION($idAuthor, $idProg, $value){
+	$mysqli = conn();	
+	
+	$idPC = FetchCursor($idAuthor, "PC", $idProg);
+	
+	if ($idPC != 0){
+		$query = "UPDATE `PC` SET `description` = '$value' WHERE `idPC` = $idPC";
+		return $mysqli->query($query);
+	}else return 0;
+}
 
 // ----  операции над образовательными программами  ---- //
 
 function PROGRAM_COLLECTION($idAuthor) {
 	$mysqli = conn();	
 
-	$query = "SELECT * FROM `program` WHERE `Autho`r=$idAuthor";
+	$query = "SELECT * FROM `program` WHERE `Author`=$idAuthor";
 	$res = $mysqli->query($query);	
 	$arr = array();
 	for ($row_no = 0; $row_no < $res->num_rows; $row_no++) {
@@ -982,30 +1110,479 @@ function PROGRAM_COLLECTION($idAuthor) {
 	return $arr;
 }
 
-function CREATE_EDU_PROG($idAuthor, $idStand){
-	
-	$mysqli = conn();	
-	$txt = 'Введите данные';
-	$query = "INSERT INTO `program` (`idStand`, `year`, `Author`) VALUES ($idStand, $_POST[year], $idAuthor)";
+function CREATE_PROGRAM($idAuthor, $idStand, $year){
+	$mysqli = conn();		
+	$query = "INSERT INTO `program` (`idStand`, `year`, `Author`) VALUES ($idStand, '$year', '$idAuthor')";
 
 	$res = $mysqli->query($query);	// добавляем запись о новом стандарте
 	$id = $mysqli->insert_id;	// идентификатор нового стандарта
 
 	CreateCursor($idAuthor,"PC",$id);
+	CreateCursor($idAuthor,"Course",$id);
 	
 	return $id;
 }
 
 function GET_STANDART($idAuthor, $idProg){
-
-	return $idStand;
+	$mysqli = conn();	
+	$query = "SELECT `idStand` FROM `program` WHERE `idProg`=$idProg";
+	$res = $mysqli->query($query);	
+	$res->data_seek(0);
+	$row = $res->fetch_assoc();
+	return	$row[idStand];
 }
 
-function SET_EDU_PROG_YEAR($idAuthor, $idStand){
+function RESET_COURSE($idAuthor, $idProg){
+	return ResetCursor($idAuthor, "Course", $idProg);	
+}
+
+function NEXT_COURSE($idAuthor, $idProg){
+	NextCursor($idAuthor, "Course", $idProg);
 	return 0;
 }
 
+function PRIOR_COURSE($idAuthor, $idProg) {
+	PriorCursor($idAuthor, "Course", $idProg);
+	return 0;
+}
 
+function FETCH_COURSE($idAuthor, $idProg) {
+	return FetchCursor($idAuthor, "Course", $idProg);
+}
 
+function DELETE_COURSE($idAuthor, $idProg){
+	$mysqli = conn();	
+	
+	$id = DeleteCursor($idAuthor, "Course", $idProg);
+	
+	if($id != 0){
+		$query = "DELETE FROM `syllabus` WHERE `idCourse`=$id";
+		$res = $mysqli->query($query);
+	}
+
+	return $id;
+}
+
+function INSERT_COURSE($idAuthor, $idProg, $semestr){
+	$mysqli = conn();	
+
+	$idCourse = CREATE_COURSE($idAuthor);
+	$query = "INSERT INTO `syllabus` (`idProg`, `idCourse`, `semester`) VALUES ($idProg, $idCourse, $semestr)";
+	$res = $mysqli->query($query);	
+	$id = $mysqli->insert_id;	
+
+	InsertCursor($idAuthor, "Course", $idProg, $id);
+
+	return $id;
+}
+
+function GET_COURSE_TITLE($idAuthor, $idProg){
+	$mysqli = conn();	
+	$id = FETCH_COURSE($idAuthor, $idProg);
+	$query = "SELECT `title` FROM `course` WHERE `idCour` = $id";
+	$res = $mysqli->query($query);	
+	$res->data_seek(0);
+	$row = $res->fetch_assoc();
+	return $row[title];
+
+}
+
+function GET_COURSE_LECTURE($idAuthor, $idProg){
+	return 0;
+}
+
+function GET_COURSE_LABORATORY($idAuthor, $idProg){
+	return 0;
+}
+
+function GET_COURSE_OUTWORK($idAuthor, $idProg){
+	return 0;
+}
+
+function SET_COURSE_TITLE($idAuthor, $idProg, $value){
+	$mysqli = conn();	
+	$id = FETCH_COURSE($idAuthor, $idProg);
+	if ($id != 0){
+		$query = "UPDATE `course` SET `title` = '$value' WHERE `idCour` = $id";
+		return $mysqli->query($query);
+	}else return 0;
+}
+
+// ----  операции над курсами и граф-планами  ---- //
+
+function GRAPH_PLAN($idAuthor, $idCourse){
+//Доступ к корневой вершине граф-плана курса осуществляется с помощью операции:
+	$mysqli = conn();	
+	$query = "select `idNod` from `gpnode` where `idCour` = $idCourse and `leftKey` = 1";
+	$res = $mysqli->query($query);	
+	$res->data_seek(0);
+	$row = $res->fetch_assoc();
+	return $row[idNod];
+}
+
+function INSERT_CHILD($idAuthor, $node){
+// добавления новой дочерней вершины узла node
+	$mysqli = conn();	
+	$query = "select * from `gpnode` where `idNod` = $node";
+	$result = $mysqli->query($query);
+	$result->data_seek(0);
+	$row = $result->fetch_assoc();
+	$parentLeft = $row["leftKey"];
+	$parentRight = $row["rightKey"];
+	$parentLevel = $row["level"];
+	$idCour = $row["idCour"];
+//	$idMod = $ow["idMod"];
+	
+	$left = $parentRight;
+	$right = $left + 1;
+	$query = "insert into `gpnode` (`idCour`, `level`, `leftKey`, `rightKey`) values ($idCour, ".($parentLevel + 1).", $left, $right";
+	$res = $mysqli->query($query);	
+	$id = $mysqli->insert_id;	
+
+	$query = "update `gpnode` set rightKey = rightKey + 2 where rightKey >= $left and idNod != $id and idCour = $idCour";
+	$res = $mysqli->query($query);
+
+	$query = "update `gpnode` set leftKey = leftKey + 2 where leftKey > $left and idCour = $idCour";
+	$res = $mysqli->query($query);
+	
+	InsertCursor($idAuthor, "Node", $node, $id);	
+}
+
+function FETCH_CHILD($idAuthor,$node){
+//Получение указателя на текущую дочернюю вершину узла node 
+	return FetchCursor($idAuthor, "Course", $node);
+}
+
+function RESET_CHILD($idAuthor,$node){
+//Перемещение внутреннего курсора на первую дочернюю вершину узла node 
+	return ResetCursor($idAuthor, "Node", $node);		
+}
+
+function NEXT_CHILD($idAuthor,$node){
+//Перемещение внутреннего курсора на следующую дочернюю вершину узла node 
+	NextCursor($idAuthor, "Node", $node);
+	return 0;
+}
+
+function PRIOR_CHILD($idAuthor,$node){
+//Перемещение курсора на предыдущую дочернюю вершину узла 
+	PriorCursor($idAuthor, "Node", $node);
+	return 0;	
+}
+
+function DELETE_CHILD($idAuthor,$node){
+//Удаление дочерней вершины узла, на которую указывает курсор
+	$mysqli = conn();	
+	
+	$id = DeleteCursor($idAuthor, "Node", $node);
+	
+	if($id != 0){
+		$query = "DELETE FROM `gpnode` WHERE `idNod`=$id";
+		$res = $mysqli->query($query);
+	}
+/* 
+			function updateParentsD($conn, $counter, $course)
+			{
+				$sql = "update gpnode set rightKey = rightKey - 2 where rightKey > " . $counter . " and idCour = $course;";
+				if ($conn->query($sql) === TRUE) 
+				{
+					//запрос выполнен
+				} 
+				else 
+				{
+					//запрос не выполнен
+					header("Location: " . strtok($_SERVER['HTTP_REFERER'], '?') . "?message=qrfail");
+					die("Query failed");
+				}
+				$sql = "update gpnode set leftKey = leftKey - 2 where leftKey > " . $counter . " and idCour = $course;";
+				if ($conn->query($sql) === TRUE) 
+				{
+					//запрос выполнен
+				} 
+				else 
+				{
+					//запрос не выполнен
+					header("Location: " . strtok($_SERVER['HTTP_REFERER'], '?') . "?message=qrfail");
+					die("Query failed");
+				}
+			}
+			
+			function deleteCLNode($conn, $ID)
+			{
+				$sql = "select leftKey, idCour from gpnode where idNod = " . $ID . ";";
+				$result = $conn->query($sql);
+				if ($result->num_rows > 0) 
+				{
+					while($row = $result->fetch_assoc()) 
+					{
+						$left = $row["leftKey"];
+						$course = $row["idCour"];
+					}
+				}
+				else
+				{
+					//пустой результат запроса
+					header("Location: " . strtok($_SERVER['HTTP_REFERER'], '?') . "?message=emptyqr");
+					die("No results");
+				}
+				$sql = "delete from gpnode where idNod = " . $ID . ";";
+				if ($conn->query($sql) === TRUE) 
+				{
+					//запрос выполнен
+				} 
+				else 
+				{
+					//запрос не выполнен
+					header("Location: " . strtok($_SERVER['HTTP_REFERER'], '?') . "?message=qrfail");
+					die("Query failed");
+				}
+				updateParentsD($conn, $left, $course);
+			}
+
+			function deleteNode($conn, $ID)
+			{				while(true)
+				{
+					$left = -1;
+					$right = -1;
+					$sql = "select * from gpnode where idNod = " . $ID . ";";
+					$result = $conn->query($sql);
+					if ($result->num_rows > 0) 
+					{
+						while($row = $result->fetch_assoc()) 
+						{
+							$left = $row["leftKey"];
+							$right = $row["rightKey"];
+							$course = $row["idCour"];
+						}
+					}
+					else
+					{
+						//пустой результат запроса
+						header("Location: " . strtok($_SERVER['HTTP_REFERER'], '?') . "?message=emptyqr");
+						die("No results");
+					}
+					if($right == $left + 1) 
+					{
+						deleteCLNode($conn, $ID);
+						break;
+					}
+					else 
+					{
+						$dID = -1;
+						$sql = "select idNod from gpnode where leftKey = " . ($left + 1) . " and idCour = $course;";
+						$result = $conn->query($sql);
+						if ($result->num_rows > 0) 
+						{
+							while($row = $result->fetch_assoc()) 
+							{
+								$dID = $row["idNod"];
+							}
+						}
+						else
+						{
+							//пустой результат запроса
+							header("Location: " . strtok($_SERVER['HTTP_REFERER'], '?') . "?message=emptyqr");
+							die("No results");
+						}
+						deleteNode($conn, $dID);
+					}
+				} 
+			}
+*/
+	return $id;
+}
+
+function CREATE_COURSE($idAuthor){
+	$mysqli = conn();	
+
+	$d = date("Y-m-d");				// текущая дата
+	$txt = "Введите данные";
+	$idEnc = CREATE_ENCYCLOPEDIA($idAuthor);
+	$query = "INSERT INTO `course` (`Author`, `idEnc`, `title`, `annotation`, `created`) VALUES ($idAuthor, $idEnc, $txt, $txt, $d)";
+	$res = $mysqli->query($query);	
+	$id = $mysqli->insert_id;	
+
+	return $id;
+}
+
+function GET_ENCYCLOPEDIA($idAuthor, $idCourse){
+	$mysqli = conn();	
+	$query = "select * from `course` where `idCour` = $idCourse";
+	$result = $mysqli->query($query);
+	$result->data_seek(0);
+	$row = $result->fetch_assoc();
+	return $row["idEnc"];	
+}
+
+function SET_LINK($idAuthor, $node, $module){
+//Связывание узла граф-плана node с модулем module 
+	$mysqli = conn();
+	$query = "update `gpnode` set `idMod` = $module where idNod = $node";
+	$mysqli->query($query); 
+}
+
+function GET_LINK($idAuthor, $node){
+//Для получения доступа к модулю энциклопедии курса, который ассоциирован с узлом граф-плана node
+	$mysqli = conn();
+	$query = "select `idMod` from `gpnode` where idNod = $node";
+	$result = $mysqli->query($query);
+	$result->data_seek(0);
+	$row = $result->fetch_assoc(); 
+	return $row["idMod"];
+}
+
+function INSERT_UC_INTO_GP($idAuthor, $node, $number){
+//Добавление номера number в коллекцию номеров универсальных компетенций узла граф-плана node 
+	$mysqli = conn();
+
+	$query = "select `idCompetence` from `UC` where `number` = $number AND `idStand` IN (SELECT idStand FROM `program` WHERE `idProg` IN (SELECT `idProg` FROM `syllabus` WHERE `idCour` IN (SELECT `idCour` FROM `gpnode` WHERE `idNod`=$node)))";
+	$result = $mysqli->query($query);
+	$result->data_seek(0);
+	$row = $result->fetch_assoc(); 
+	$id = $row[idCompetence];
+
+	$query = "INSERT INTO `complist` (`idComp`, `idNod`) VALUES ($id, $node)";
+	$res = $mysqli->query($query);	
+	$id = $mysqli->insert_id;
+	InsertCursor($idAuthor, "UCNode", $node, $id);	
+	
+	return $id;
+}
+
+function DELETE_UC_FROM_GP($idAuthor, $node, $number){
+//Удаление номера number из коллекции номеров универсальных компетенций узла граф-плана node 
+	$mysqli = conn();
+
+	$query = "select `idCompetence` FROM `competence` WHERE `number`=$number AND `type`='УК'";
+	$result = $mysqli->query($query);
+	$result->data_seek(0);
+	$row = $result->fetch_assoc(); 
+	$idComp = $row[idCompetence];
+	$query = "select `idList` from `complist` where `idNod`=$node AND `idComp`=$idComp";
+	$result = $mysqli->query($query);
+	$result->data_seek(0);
+	$row = $result->fetch_assoc(); 
+	$id = $row[idList];
+	DeleteCursor($idAuthor, "UCNode", $node, $idComp);	
+	
+	$query = "DELETE FROM `complist` WHERE `idList`=$id";
+	return $mysqli->query($query);
+}
+
+function UC_ISEXIST($idAuthor, $node, $number){
+//Определение наличия универсальной компетенции с номером number в узле node граф-плана 
+	$mysqli = conn();
+	
+	$query = "select `idList` from `complist` where `idNod`=$node AND `idComp` IN (select `idCompetence` FROM `competence` WHERE `number`=$number AND `type`='УК')";
+	$result = $mysqli->query($query);
+	if ($result->num_rows > 0) {
+		return True;
+	}else{
+		return False;
+	}	
+}
+
+function INSERT_GPC_INTO_GP($idAuthor, $node, $number){
+//Добавление номера number в коллекцию номеров универсальных компетенций узла граф-плана node 
+	$mysqli = conn();
+
+	$query = "select `idCompetence` from `GPC` where `number` = $number AND `idStand` IN (SELECT idStand FROM `program` WHERE `idProg` IN (SELECT `idProg` FROM `syllabus` WHERE `idCour` IN (SELECT `idCour` FROM `gpnode` WHERE `idNod`=$node)))";
+	$result = $mysqli->query($query);
+	$result->data_seek(0);
+	$row = $result->fetch_assoc(); 
+	$id = $row[idCompetence];
+
+	$query = "INSERT INTO `complist` (`idComp`, `idNod`) VALUES ($id, $node)";
+	$res = $mysqli->query($query);	
+	$id = $mysqli->insert_id;
+	InsertCursor($idAuthor, "GPCNode", $node, $id);	
+	
+	return $id;
+}
+
+function DELETE_GPC_FROM_GP($idAuthor, $node, $number){
+//Удаление номера number из коллекции номеров универсальных компетенций узла граф-плана node 
+	$mysqli = conn();
+
+	$query = "select `idCompetence` FROM `competence` WHERE `number`=$number AND `type`='ОПК'";
+	$result = $mysqli->query($query);
+	$result->data_seek(0);
+	$row = $result->fetch_assoc(); 
+	$idComp = $row[idCompetence];
+	$query = "select `idList` from `complist` where `idNod`=$node AND `idComp`=$idComp";
+	$result = $mysqli->query($query);
+	$result->data_seek(0);
+	$row = $result->fetch_assoc(); 
+	$id = $row[idList];
+	DeleteCursor($idAuthor, "GPCNode", $node, $idComp);	
+	
+	$query = "DELETE FROM `complist` WHERE `idList`=$id";
+	return $mysqli->query($query);
+}
+
+function GPC_ISEXIST($idAuthor, $node, $number){
+//Определение наличия универсальной компетенции с номером number в узле node граф-плана 
+	$mysqli = conn();
+	
+	$query = "select `idList` from `complist` where `idNod`=$node AND `idComp` IN (select `idCompetence` FROM `competence` WHERE `number`=$number AND `type`='ОПК')";
+	$result = $mysqli->query($query);
+	if ($result->num_rows > 0) {
+		return True;
+	}else{
+		return False;
+	}	
+}
+
+function INSERT_PC_INTO_GP($idAuthor, $node, $number){
+//Добавление номера number в коллекцию номеров универсальных компетенций узла граф-плана node 
+	$mysqli = conn();
+
+	$query = "select `idCompetence` from `PC` where `number` = $number AND `idStand` IN (SELECT idStand FROM `program` WHERE `idProg` IN (SELECT `idProg` FROM `syllabus` WHERE `idCour` IN (SELECT `idCour` FROM `gpnode` WHERE `idNod`=$node)))";
+	$result = $mysqli->query($query);
+	$result->data_seek(0);
+	$row = $result->fetch_assoc(); 
+	$id = $row[idCompetence];
+
+	$query = "INSERT INTO `complist` (`idComp`, `idNod`) VALUES ($id, $node)";
+	$res = $mysqli->query($query);	
+	$id = $mysqli->insert_id;
+	InsertCursor($idAuthor, "PCNode", $node, $id);	
+	
+	return $id;
+
+}
+
+function DELETE_PC_FROM_GP($idAuthor, $node, $number){
+//Удаление номера number из коллекции номеров универсальных компетенций узла граф-плана node 
+	$mysqli = conn();
+
+	$query = "select `idCompetence` FROM `competence` WHERE `number`=$number AND `type`='ПК'";
+	$result = $mysqli->query($query);
+	$result->data_seek(0);
+	$row = $result->fetch_assoc(); 
+	$idComp = $row[idCompetence];
+	$query = "select `idList` from `complist` where `idNod`=$node AND `idComp`=$idComp";
+	$result = $mysqli->query($query);
+	$result->data_seek(0);
+	$row = $result->fetch_assoc(); 
+	$id = $row[idList];
+	DeleteCursor($idAuthor, "PCNode", $node, $idComp);	
+	
+	$query = "DELETE FROM `complist` WHERE `idList`=$id";
+	return $mysqli->query($query);
+}
+
+function PC_ISEXIST($idAuthor, $node, $number){
+//Определение наличия универсальной компетенции с номером number в узле node граф-плана 
+	$mysqli = conn();
+	
+	$query = "select `idList` from `complist` where `idNod`=$node AND `idComp` IN (select `idCompetence` FROM `competence` WHERE `number`=$number AND `type`='ПК')";
+	$result = $mysqli->query($query);
+	if ($result->num_rows > 0) {
+		return True;
+	}else{
+		return False;
+	}	
+}
 
 ?>

@@ -3,31 +3,28 @@
    <head>
       <title>Конструктор курсов</title>
 	  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-	  <meta http-equiv="refresh" content="0.1;URL=encyclopedia.php" />
 	  <link rel="stylesheet" type="text/css" href="res/css/style.css">
-<script>
-</script>	
    </head>
 <body>
+
       <div id="mega-box">
          <div id="header"> 
 		    <img src="res/img/logo.png" class="logo">
 			<ul class="menu">
 				<h1>Конструктор курсов</h1>
- 				<h1>Конструктор курсов <!--Electronic Course Designer--></h1>
-               <li><a  href="competence.php">Компетенции</a></li>
-               <li><a  href="standart.php">Стандарты</a></li>
-			   <li><a  href="program.php">Образовательные программы</a></li>
-			   <li><a  href="analysis.php">Анализ программ</a></li>
                <li><a  href="encyclopedia.php">Энциклопедии</a></li>
                <li><a  href="course.php">Курсы</a></li>
-               <li><a  href="SCORM-generator.php">Сформировать SCORM-пакет</a></li>
+               <li><a  href="generator.php">Сформировать SCORM-пакет</a></li>
                <li><a  href="help.html">О системе</a></li>
             </ul>
          </div>
-		 <div id="content">
-		  </div>
-
+        <div id="content">
+			<h1>О системе</h1>
+<?php
+echo test;
+?>
+        </div>
       </div>
  </body>
 </html>
+
